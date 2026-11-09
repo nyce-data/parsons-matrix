@@ -1,6 +1,6 @@
 # The Parsons Matrix
 
-**Live site: [https://sdiggs.github.io/parsons-matrix/](https://sdiggs.github.io/parsons-matrix/)**
+**Live site: [https://nyce-data.github.io/parsons-matrix/](https://nyce-data.github.io/parsons-matrix/)**
 
 The Parsons Matrix maps who works where in research data stewardship. It places each initiative on three axes: the data disciplines it covers, the stakeholders it serves, and the functions it performs. The axes come from the landscape pilot form. Initiatives that have answered the form are plotted from their own responses; the rest are estimates that get replaced as responses come in.
 

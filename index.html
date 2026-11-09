@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Parsons Matrix</title>
+<meta name="description" content="An interactive 3D map of research data stewardship initiatives by discipline, stakeholder, and function, built from the landscape pilot form.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single reading column, cube first, reference material below */
+:root{
+  --bg:#f6f8f8; --surface:#ffffff; --fg:#14211f; --muted:#56635f; --faint:#7d8a86;
+  --rule:#d9e1df; --accent:#0d6a63; --accent-bg:#e1f0ee; --warn-bg:#fbf1dc; --warn-fg:#7a4f05;
+  --display:"Source Serif 4", Georgia, "Times New Roman", serif;
+  --body:"Public Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme:light;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1514; --surface:#161e1d; --fg:#e4ebe9; --muted:#a3b0ac; --faint:#7f8c88;
+  --rule:#26312f; --accent:#4fbcb1; --accent-bg:#183330; --warn-bg:#33270f; --warn-fg:#f0c66e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1514; --surface:#161e1d; --fg:#e4ebe9; --muted:#a3b0ac; --faint:#7f8c88;
+  --rule:#26312f; --accent:#4fbcb1; --accent-bg:#183330; --warn-bg:#33270f; --warn-fg:#f0c66e; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.6}
+[hidden]{display:none!important}
+.wrap{max-width:1080px;margin:0 auto;padding-block:40px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:40px}
+header{display:flex;flex-direction:column;gap:12px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(2rem,5vw,2.9rem);line-height:1.1;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;font-size:1.45rem;margin:0;text-wrap:balance}
+p{margin:0;max-width:68ch}
+.lede{font-size:1.08rem;color:var(--muted)}
+.meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
+.chip{display:inline-block;padding:3px 10px;border-radius:999px;background:var(--warn-bg);color:var(--warn-fg);font-weight:500;font-size:13px}
+.tag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:500;white-space:nowrap}
+.tag.self{background:var(--accent-bg);color:var(--accent)}
+.tag.est{background:var(--warn-bg);color:var(--warn-fg)}
+section{display:flex;flex-direction:column;gap:14px}
+.figure{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px}
+#cube{width:100%;height:700px}
+@media (max-width:640px){#cube{height:500px}}
+.ctrl{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
+.ctrl-group{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ctrl-label{font:500 12px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:7px;overflow:hidden}
+.seg button{font:500 13px/1 var(--body);padding:8px 12px;border:0;background:transparent;color:var(--muted);cursor:pointer}
+.seg button+button{border-left:1px solid var(--rule)}
+.seg button[aria-pressed="true"]{background:var(--accent-bg);color:var(--accent)}
+.toggles{display:flex;flex-wrap:wrap;gap:6px}
+.tg{font:500 13px/1 var(--body);display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:6px;border:1px solid var(--rule);background:var(--bg);color:var(--fg);cursor:pointer}
+.tg i,.sw{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.tg i.open{background:transparent!important;border:1.5px solid currentColor}
+.tg[aria-pressed="false"]{color:var(--faint);background:transparent}
+.tg[aria-pressed="false"] i{opacity:.25}
+.tg.ghost{color:var(--muted)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted);align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.ring{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--muted);display:inline-block}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--muted);display:inline-block}
+.hint{font-size:13px;color:var(--muted)}
+.stats{display:flex;flex-wrap:wrap;gap:10px 28px;font-size:14px;color:var(--muted)}
+.stats b{font-family:var(--display);font-size:1.6rem;font-weight:600;color:var(--fg);margin-right:6px;font-variant-numeric:tabular-nums}
+.axes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+.axis{display:flex;flex-direction:column;gap:6px;border-top:2px solid var(--accent);padding-top:10px;min-width:0}
+.axis h3{margin:0;font:600 15px var(--body)}
+.axis .q{font-size:13px;color:var(--muted)}
+.axis ol,.axis ul{margin:0;padding:0 0 0 1.3em;display:flex;flex-direction:column;gap:3px;font-size:14px}
+.axis ul{list-style:none;padding:0}
+.note{font-size:12px;color:var(--faint)}
+.tbl{overflow-x:auto;border:1px solid var(--rule);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:960px;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:11px 12px;border-bottom:1px solid var(--rule)}
+th{font:600 12px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+tr:last-child td{border-bottom:none}
+td.org{font-weight:600}
+td.org i{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:8px}
+td small{display:block;font-weight:400;color:var(--muted);margin-top:4px;font-size:13px;max-width:36ch}
+.sub{color:var(--muted);font-size:13px}
+a{color:var(--accent)}
+.qs{display:flex;flex-direction:column;gap:14px;margin:0;padding:0;list-style:none}
+.qs li{display:flex;flex-direction:column;gap:3px;max-width:72ch}
+.qs b{font-weight:600}
+footer{font-size:13px;color:var(--faint);border-top:1px solid var(--rule);padding-top:16px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="eyebrow">Research data stewardship landscape</div>
+  <h1>The Parsons Matrix</h1>
+  <p class="lede">A three-axis map of who works where in research data stewardship: the data disciplines an initiative covers, the stakeholders it serves, and the functions it performs. The axes come from the landscape pilot form. Initiatives that have answered the form are plotted from their own responses; the rest are estimates waiting to be replaced.</p>
+  <div class="meta"><span class="chip">Pilot: 2 of 11 initiatives self-reported</span><span>Steve Diggs · November 8, 2026</span></div>
+</header>
+
+<section>
+  <h2>The cube</h2>
+  <p class="hint">Drag to rotate, scroll to zoom, hover any point for its cell. Isolate one initiative at a time to read its shape, or switch to self-reported only to see just the pilot responses.</p>
+  <div class="figure">
+    <div class="ctrl">
+      <div class="ctrl-group">
+        <span class="ctrl-label">Show</span>
+        <div class="seg" role="group" aria-label="Which placements to show">
+          <button type="button" id="src-all" aria-pressed="true">All placements</button>
+          <button type="button" id="src-self" aria-pressed="false">Self-reported only</button>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-label">Color by</span>
+        <div class="seg" role="group" aria-label="Color by">
+          <button type="button" id="mode-org" aria-pressed="true">Initiative</button>
+          <button type="button" id="mode-fund" aria-pressed="false">Funder type</button>
+        </div>
+      </div>
+    </div>
+    <div class="legend" id="fundLegend" hidden></div>
+    <div class="toggles" id="toggles"></div>
+    <div id="cube" role="img" aria-label="Rotatable 3D plot of research data stewardship initiatives across data disciplines, stakeholders, and functions"></div>
+    <div class="legend"><span><span class="dot"></span>Self-reported on the pilot form</span><span><span class="ring"></span>Estimate by Steve Diggs, awaiting a response</span><span>Points are offset slightly within each cell so overlapping initiatives stay visible.</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>About this data</h2>
+  <div class="stats" id="stats"></div>
+  <p>Two initiatives answered the pilot form on November 5, 2026: Andel Koester for NYCE's Climate Data Stewardship Initiative, and Brittany Janis for Public Environmental Data Partners. Their points are their own answers, with one label adjusted: NYCE's answer "Data Stewardship" is plotted as the form's "Data Preservation & Stewardship."</p>
+  <p>The other nine initiatives are Steve Diggs's estimates, translated from the earlier first-pass placements into the form's categories. Each one is replaced when that initiative responds.</p>
+</section>
+
+<section>
+  <h2>The three axes</h2>
+  <p>These are the pilot form's own categories. Functions are ordered along the data lifecycle, from collection through use, followed by the work that supports the whole chain, so the axis reads left to right.</p>
+  <div class="axes">
+    <div class="axis"><h3>Data disciplines</h3><span class="q">Whose data?</span><ul id="axD"></ul></div>
+    <div class="axis"><h3>Stakeholders</h3><span class="q">Who is it for?</span><ul id="axS"></ul></div>
+    <div class="axis"><h3>Functions</h3><span class="q">What does it do?</span><ol id="axF"></ol></div>
+  </div>
+</section>
+
+<section>
+  <h2>Placements</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Initiative</th><th>Data disciplines</th><th>Stakeholders</th><th>Functions</th><th>Funding</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>What the first two responses show</h2>
+  <ul class="qs">
+    <li><b>NYCE describes its initiative more broadly than the earlier estimate did.</b><span>The earlier placement had NYCE's initiative serving researchers through preservation and coordination. NYCE's own answer names decision makers and data users, and puts data access and usability first among its functions, alongside stewardship and prioritization. It doesn't name network coordination.</span></li>
+    <li><b>PEDP places itself in federal and environmental justice data, and doesn't claim advocacy.</b><span>PEDP's answer names Federal and Environmental Health &amp; Justice, with access, tool development, and network coordination as its functions. The estimate for EDGI, one of PEDP's three leads, does include advocacy, so the two may divide that work between them.</span></li>
+    <li><b>Both respondents meet in one cell.</b><span>NYCE and PEDP each named Data Access &amp; Usability, the Data Resilience Community, and Data Users. Neither named data collection, standards, repositories, or integration, which leaves the lifecycle's early stages to the estimates for now.</span></li>
+  </ul>
+</section>
+
+<section>
+  <h2>Questions about the form</h2>
+  <ul class="qs">
+    <li><b>Is "Federal" a discipline?</b><span>Federal describes where data comes from, not what field it belongs to. PEDP chose it, and it fits PEDP, but it sits on the same axis as Energy and Physical Sciences. A separate question on data origin (federal, state, academic, community) would keep the disciplines axis to one kind of thing.</span></li>
+    <li><b>Did the form cap the number of choices?</b><span>Both respondents chose exactly three stakeholders and exactly three functions. If the form limits answers to three, broad initiatives will look narrower than they are, and the cap should be stated or lifted.</span></li>
+    <li><b>Should answers match the form's labels exactly?</b><span>NYCE's "Data Stewardship" doesn't match any of the 13 function labels. Fixed checkboxes would prevent the mismatch.</span></li>
+    <li><b>Should the form ask what's core and what's incidental?</b><span>The earlier draft drew home domains and reach differently. The form doesn't ask which answers are central to an initiative's mandate, so the cube can't show that distinction from responses.</span></li>
+    <li><b>Should the form ask about funding?</b><span>Funder type comes from Steve Diggs's notes, not the form. A single question on who pays (federal, philanthropy, host institution, volunteers and small grants, unfunded) would let the funder view run on reported data.</span></li>
+  </ul>
+</section>
+
+<footer>Last updated November 8, 2026. Self-reported placements come from the landscape pilot form; all other placements and all funding entries are estimates by Steve Diggs for review by the AGU Data Resilience Project team and collaborators. Source pages for the estimates: <a href="https://datafoundation.org" target="_blank" rel="noopener">Data Foundation</a>, <a href="https://news.agu.org/press-release/agu-global-data-resilience-convening/" target="_blank" rel="noopener">AGU Global Data Resilience Convening</a>, <a href="https://www.datarescueproject.org/" target="_blank" rel="noopener">Data Rescue Project</a>, <a href="https://datascience.nih.gov/data-ecosystem/generalist-repository-ecosystem-initiative" target="_blank" rel="noopener">NIH GREI</a>, <a href="https://envirodatagov.org/about" target="_blank" rel="noopener">EDGI</a>, <a href="https://www.screening-tools.com" target="_blank" rel="noopener">PEDP</a>, <a href="https://openenvironmentaldataproject.substack.com/" target="_blank" rel="noopener">OEDP</a>.</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js"></script>
+<script>
+const D=['Federal','Energy','Extreme Weather & Hazards','Environmental Health & Justice','Geospatial & Remote Sensing','Health & Medicine','Physical Sciences','Socioeconomic'];
+const S=['Data Producers','Data Resilience Community','Data Users','Decision Makers','Community Organizers','Media & General Public','Funders'];
+const F=[
+ ['Data Collection','Collection'],
+ ['Data Standards & Quality','Standards & quality'],
+ ['Data Preservation & Stewardship','Preservation'],
+ ['Data Management & Repositories','Repositories'],
+ ['Data Integration & Interoperability','Integration'],
+ ['Data Access & Usability','Access & usability'],
+ ['Innovation & Tool Development','Tool development'],
+ ['Data Prioritization & Strategic Planning','Prioritization'],
+ ['Community Engagement & Application','Community application'],
+ ['Stakeholder Engagement & Partnerships','Partnerships'],
+ ['Data Network Coordination','Network coordination'],
+ ['Advocacy, Policy, & Legal','Advocacy, policy, legal'],
+ ['Funding & Business Models','Funding models']];
+const FN=F.map(x=>x[0]);
+const FT=['Federal','Philanthropy','Host institution','Volunteers and small grants','Unfunded'];
+const FT_L=['#2a78d6','#6250d6','#1baf7a','#eb6834','#8a9692'];
+const FT_D=['#3987e5','#9085e9','#22b884','#e06a37','#8a9692'];
+const O=[
+{n:"NYCE's DSI",src:'self',resp:'Andel Koester, Nov 5, 2026',d:['Extreme Weather & Hazards','Geospatial & Remote Sensing'],s:['Decision Makers','Data Resilience Community','Data Users'],f:['Data Access & Usability','Data Preservation & Stewardship','Data Prioritization & Strategic Planning'],ft:2,fund:'New York Climate Exchange',note:'Self-reported as the Climate Data Stewardship Initiative at the New York Climate Exchange.'},
+{n:'PEDP',src:'self',resp:'Brittany Janis, Nov 5, 2026',d:['Federal','Environmental Health & Justice'],s:['Community Organizers','Data Resilience Community','Data Users'],f:['Data Access & Usability','Innovation & Tool Development','Data Network Coordination'],ft:3,fund:'Donations and member organizations (to confirm)',note:'Public Environmental Data Partners, led by EDGI, OEDP, and the Environmental Policy Innovation Center; archives federal data and hosts CEJST, EJScreen, EJAM, and HIFLD Next.'},
+{n:"KCF's PVSI",src:'est',d:['Physical Sciences','Extreme Weather & Hazards'],s:['Data Users','Decision Makers','Media & General Public'],f:['Data Collection','Data Access & Usability','Data Prioritization & Strategic Planning','Advocacy, Policy, & Legal'],ft:1,fund:'Rose Family Foundation',note:'Planetary Vital Signs Initiative at the Keeling Curve Foundation; the Keeling Curve and long-term observations, the Data Continuity Initiative, and the pull-the-plug simulator.'},
+{n:'Data Foundation CCED',src:'est',d:['Energy','Geospatial & Remote Sensing','Socioeconomic'],s:['Decision Makers','Data Users'],f:['Data Standards & Quality','Data Integration & Interoperability','Data Access & Usability','Stakeholder Engagement & Partnerships'],ft:1,fund:'Data Foundation donors and philanthropy',note:'Center for Climate and Environmental Data, formerly the Climate Data Collaborative; emissions data standards, the Methane Plume Technical Working Group, and decision-facing data.'},
+{n:'CRRDI',src:'est',d:['Federal','Health & Medicine','Physical Sciences','Socioeconomic'],s:['Data Resilience Community','Decision Makers','Funders'],f:['Data Standards & Quality','Data Management & Repositories','Data Network Coordination','Funding & Business Models'],ft:1,fund:'Robert Wood Johnson Foundation',note:'Coalition for Resilient Research Data Infrastructure, convened by the Center for Open Science; repository maturity model, federal repository inventory, and business-model survey.'},
+{n:'AGU Data Resilience Project',src:'est',d:['Physical Sciences','Geospatial & Remote Sensing'],s:['Data Resilience Community','Data Producers','Data Users'],f:['Data Standards & Quality','Data Management & Repositories','Data Network Coordination','Funding & Business Models'],ft:1,fund:'Hewlett Foundation, with AGU',note:'AGU-led global effort on governance and technical architecture for resilient data; Berlin convening, March 2026.'},
+{n:'Data Rescue Project',src:'est',d:['Federal','Health & Medicine','Socioeconomic','Environmental Health & Justice'],s:['Data Users','Data Resilience Community','Community Organizers','Media & General Public'],f:['Data Preservation & Stewardship','Data Access & Usability','Community Engagement & Application','Data Network Coordination'],ft:3,fund:'Volunteers and small grants',note:'Volunteer coalition founded by Lynda Kellam in February 2025 to preserve at-risk US federal data; rescued datasets, a portal, and an event toolkit.'},
+{n:'CODAN',src:'est',d:['Physical Sciences','Federal'],s:['Data Resilience Community','Decision Makers','Funders'],f:['Data Network Coordination','Stakeholder Engagement & Partnerships'],ft:4,fund:'Unfunded',note:'Climate/Ocean Data Action Network; an information hub for climate and ocean data.'},
+{n:'NIH GREI',src:'est',d:['Health & Medicine','Federal'],s:['Data Producers','Data Users','Funders'],f:['Data Standards & Quality','Data Management & Repositories','Data Access & Usability'],ft:0,fund:'NIH, award period 2022 to 2026',note:'Generalist Repository Ecosystem Initiative; seven generalist repositories sharing metadata, discovery, and FAIR training for NIH-funded data.'},
+{n:'EDGI',src:'est',d:['Federal','Environmental Health & Justice'],s:['Community Organizers','Media & General Public','Decision Makers','Data Resilience Community'],f:['Data Preservation & Stewardship','Community Engagement & Application','Data Network Coordination','Advocacy, Policy, & Legal'],ft:3,fund:'Grants, donations, and volunteers (to confirm)',note:'Environmental Data and Governance Initiative, formed November 2016; tracks federal environmental websites and enforcement, files comments and FOIA requests, and convened PEDP.'},
+{n:'OEDP',src:'est',d:['Environmental Health & Justice'],s:['Community Organizers','Data Producers','Data Resilience Community','Funders'],f:['Data Standards & Quality','Community Engagement & Application','Stakeholder Engagement & Partnerships'],ft:1,fund:'Philanthropy (to confirm)',note:'Open Environmental Data Project; governance practices for community-collected environmental data (Community Data Playbook, DIGITCORE toolkit) and convenings on open environmental data.'}];
+const OP_L=['#2a78d6','#e34948','#eb6834','#1baf7a','#d99400','#e0628f','#2f8a2f','#6250d6','#0b8a96','#8a5a2b','#5c6b7a'];
+const OP_D=['#3987e5','#e66767','#e06a37','#22b884','#e0a520','#e07aa0','#45a845','#9085e9','#2fb3c0','#c08a55','#8fa0b2'];
+let mode='org',selfOnly=false;
+const vis=O.map(()=>true);
+function isDark(){const t=document.documentElement.dataset.theme;return t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches}
+function col(i){const dk=isDark();return mode==='org'?(dk?OP_D:OP_L)[i]:(dk?FT_D:FT_L)[O[i].ft]}
+function shown(i){return vis[i]&&(!selfOnly||O[i].src==='self')}
+function pts(o,i){const a=i*2*Math.PI/O.length,ox=.27*Math.cos(a),oy=.27*Math.sin(a),x=[],y=[],z=[],t=[];
+  const tag=o.src==='self'?'Self-reported ('+o.resp+')':'Estimate, awaiting response';
+  o.d.forEach(d=>o.f.forEach(f=>o.s.forEach(s=>{x.push(FN.indexOf(f)+ox);y.push(S.indexOf(s)+oy);z.push(D.indexOf(d));t.push('<b>'+o.n+'</b><br>'+d+' · '+s+'<br>'+f+'<br>'+tag)})));return{x,y,z,t}}
+function traces(){return O.map((o,i)=>{const c=col(i),h=pts(o,i),self=o.src==='self';
+  return{type:'scatter3d',mode:'markers',name:o.n,visible:shown(i),x:h.x,y:h.y,z:h.z,hovertext:h.t,hoverinfo:'text',
+   marker:self?{size:6,symbol:'circle',color:c,opacity:.95,line:{width:0}}:{size:5,symbol:'circle-open',color:c,opacity:1,line:{width:1.5,color:c}}}})}
+function layout(){const dk=isDark(),ink=dk?'#a3b0ac':'#56635f',grid=dk?'#2b3634':'#dde4e2',fam='Public Sans, Arial, sans-serif';
+  const ax=(t,v)=>({title:{text:t,font:{size:13,color:ink,family:fam}},tickvals:v.map((_,i)=>i),ticktext:v,range:[-.5,v.length-.5],tickfont:{size:10,color:ink,family:fam},gridcolor:grid,zeroline:false,showbackground:false,showspikes:false});
+  return{paper_bgcolor:'rgba(0,0,0,0)',margin:{l:0,r:0,t:0,b:0},showlegend:false,uirevision:'keep',
+   scene:{xaxis:ax('Functions',F.map(x=>x[1])),yaxis:ax('Stakeholders',S),zaxis:ax('Data disciplines',D),aspectmode:'manual',aspectratio:{x:1.55,y:.95,z:.9},camera:{eye:{x:1.5,y:-1.75,z:.85}}},
+   hoverlabel:{font:{size:12,family:fam}}}}
+function draw(){if(window.Plotly)Plotly.react('cube',traces(),layout(),{displayModeBar:false,responsive:true})}
+const tg=document.getElementById('toggles');
+function renderToggles(){tg.innerHTML='';O.forEach((o,i)=>{if(selfOnly&&o.src!=='self')return;const b=document.createElement('button');b.className='tg';b.id='tg'+i;b.type='button';b.setAttribute('aria-pressed',vis[i]);b.style.color='';b.innerHTML='<i class="'+(o.src==='self'?'':'open')+'" style="background:'+col(i)+';color:'+col(i)+'"></i><span style="color:var(--fg)">'+o.n+'</span>';if(!vis[i])b.querySelector('span').style.color='var(--faint)';b.onclick=()=>{vis[i]=!vis[i];renderToggles();draw()};tg.appendChild(b)});
+  [['Show all',true],['Hide all',false]].forEach(([l,v],k)=>{const b=document.createElement('button');b.className='tg ghost';b.id='tgall'+k;b.type='button';b.textContent=l;b.onclick=()=>{vis.fill(v);renderToggles();draw()};tg.appendChild(b)})}
+function renderLegend(){const el=document.getElementById('fundLegend'),p=isDark()?FT_D:FT_L;el.hidden=mode!=='fund';el.innerHTML=FT.map((t,i)=>'<span><span class="sw" style="background:'+p[i]+'"></span>'+t+'</span>').join('')+'<span>Funding is from Steve Diggs\'s notes; the form doesn\'t ask it.</span>'}
+function renderRows(){const dk=isDark();document.getElementById('rows').innerHTML=O.map((o,i)=>{const fs=o.f.slice().sort((a,b)=>FN.indexOf(a)-FN.indexOf(b));return '<tr><td class="org"><i style="'+(o.src==='self'?'background:':'border:1.5px solid ')+(dk?OP_D:OP_L)[i]+'"></i>'+o.n+' '+(o.src==='self'?'<span class="tag self">Self-reported</span>':'<span class="tag est">Estimate</span>')+'<small>'+o.note+(o.resp?' Response: '+o.resp+'.':'')+'</small></td><td>'+o.d.join('<br>')+'</td><td>'+o.s.join('<br>')+'</td><td>'+fs.join('<br>')+'</td><td>'+o.fund+'<br><span class="sub">'+FT[o.ft]+'</span></td></tr>'}).join('')}
+function renderStatic(){
+  document.getElementById('axD').innerHTML=D.map(x=>'<li>'+x+'</li>').join('')+'<li class="note">Federal names a data source rather than a field; see the questions below.</li>';
+  document.getElementById('axS').innerHTML=S.map(x=>'<li>'+x+'</li>').join('');
+  document.getElementById('axF').innerHTML=F.map((x,i)=>'<li>'+x[0]+(i===8?'<span class="note"> · supporting work begins here</span>':'')+'</li>').join('');
+  const n=O.filter(o=>o.src==='self').length;
+  document.getElementById('stats').innerHTML='<span><b>'+n+'</b>self-reported</span><span><b>'+(O.length-n)+'</b>estimates awaiting a response</span><span><b>'+(D.length*S.length*F.length)+'</b>cells in the matrix</span>'}
+function setMode(m){mode=m;document.getElementById('mode-org').setAttribute('aria-pressed',m==='org');document.getElementById('mode-fund').setAttribute('aria-pressed',m==='fund');renderToggles();renderLegend();draw()}
+function setSrc(v){selfOnly=v;document.getElementById('src-all').setAttribute('aria-pressed',!v);document.getElementById('src-self').setAttribute('aria-pressed',v);renderToggles();draw()}
+document.getElementById('mode-org').onclick=()=>setMode('org');
+document.getElementById('mode-fund').onclick=()=>setMode('fund');
+document.getElementById('src-all').onclick=()=>setSrc(false);
+document.getElementById('src-self').onclick=()=>setSrc(true);
+function all(){renderToggles();renderLegend();renderRows();draw()}
+renderStatic();all();
+try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',all)}catch(e){}
+new MutationObserver(all).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+</script>
+</body>
+</html>
